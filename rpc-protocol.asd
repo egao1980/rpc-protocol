@@ -1,5 +1,5 @@
 (defsystem "rpc-protocol"
-  :version "0.1.0"
+  :version "0.1.1"
   :description "CLOS RPC protocol for cl-stack (JSON-RPC–shaped; transports + codecs)"
   :author "egao1980"
   :license "MIT"

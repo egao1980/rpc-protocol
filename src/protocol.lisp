@@ -37,9 +37,18 @@ Returns a stop function or the transport."))
 ;;; Message codec (JSON-RPC 2.0 object as hash-table / alist helpers)
 ;;; ---------------------------------------------------------------------------
 
+(defmethod yason:encode ((object (eql :false)) &optional (stream *standard-output*))
+  (write-string "false" stream)
+  object)
+
+(defmethod yason:encode ((object (eql :true)) &optional (stream *standard-output*))
+  (write-string "true" stream)
+  object)
+
 (defun %json (obj)
-  (with-output-to-string (s)
-    (yason:encode obj s)))
+  (let ((yason:*symbol-encoder* #'yason:encode-symbol-as-lowercase))
+    (with-output-to-string (s)
+      (yason:encode obj s))))
 
 (defun %parse (string)
   (yason:parse string :object-as :hash-table :json-arrays-as-vectors t))
