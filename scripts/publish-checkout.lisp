@@ -1,26 +1,62 @@
-;;; Publish this checkout to ghcr.io/egao1980/cl-systems via auto-package-spec.
-;;; Env: GITHUB_ACTOR, GITHUB_TOKEN, PKG_SYSTEM, optional PKG_VERSION / OCI_NAMESPACE.
+;;;; Publish this checkout to ghcr.io/egao1980/cl-systems via auto-package-spec.
+;;;;
+;;;; No Quicklisp. Packager + cl-oci-client come from OCI
+;;;; (egao1980/cl-repository :latest, then first-party HTTP stack from cl-systems).
+;;;; Env: GITHUB_ACTOR, GITHUB_TOKEN, PKG_SYSTEM, optional PKG_VERSION /
+;;;; PACKAGER_VERSION / OCI_NAMESPACE.
 
-(require :asdf)
+(setf *debugger-hook*
+      (lambda (c h)
+        (declare (ignore h))
+        (format *error-output* "~&UNHANDLED: ~A~%" c)
+        (uiop:quit 1)))
 
-(asdf:initialize-source-registry
- `(:source-registry
-   (:tree (:home ".local/share/cl-systems/"))
-   :inherit-configuration))
-(load (merge-pathnames "quicklisp/setup.lisp" (user-homedir-pathname)))
-(ql:quickload '(:cl-repository-packager :cl-oci-client) :silent t)
+#+sbcl (sb-ext:disable-debugger)
 
-(asdf:initialize-source-registry
- `(:source-registry
-   (:tree ,(uiop:getcwd))
-   (:tree (:home ".local/share/cl-systems/"))
-   :inherit-configuration))
+(setf asdf:*compile-file-failure-behaviour* :warn)
+
+(defun %call-with-publish-muffles (fn)
+  #+sbcl
+  (handler-bind ((sb-ext:defconstant-uneql #'continue))
+    (funcall fn))
+  #-sbcl
+  (funcall fn))
+
+(%call-with-publish-muffles (lambda () (asdf:load-system "cl-repository-client")))
+
+(cl-repo:add-registry "https://ghcr.io" :namespace "egao1980/cl-repository" :priority :prepend)
+(cl-repo:add-registry "https://ghcr.io" :namespace "egao1980/cl-systems" :priority :append)
+
+(let ((packager-ver (uiop:getenv "PACKAGER_VERSION")))
+  (%call-with-publish-muffles
+   (lambda ()
+     (if (and packager-ver (plusp (length packager-ver)))
+         (cl-repo:ensure-systems "cl-repository-packager"
+                                 :version packager-ver
+                                 :default-source :oci)
+         (cl-repo:ensure-systems "cl-repository-packager" :default-source :oci))
+     (cl-repo:ensure-systems "cl-oci-client" :default-source :oci))))
+
+(cl-repository-client/asdf-integration:configure-asdf-source-registry)
+(cl-repository-client/asdf-integration:load-system-init-files)
+
+(%call-with-publish-muffles
+ (lambda ()
+   (when (asdf:find-system "cl-repository-packager" nil)
+     (cl-repo:ensure-system-dependencies "cl-repository-packager"
+                                         :also-tests nil
+                                         :default-source :oci))
+   (when (asdf:find-system "cl-oci-client" nil)
+     (cl-repo:ensure-system-dependencies "cl-oci-client"
+                                         :also-tests nil
+                                         :default-source :oci))
+   (asdf:load-system "cl-repository-packager")
+   (asdf:load-system "cl-oci-client")))
 
 (defun env (name &optional default)
   (or (uiop:getenv name) default))
 
-(let* ((system-name (env "PKG_SYSTEM" "io-protocol"))
-       ;; workflow_dispatch default "" is truthy — treat blank as missing
+(let* ((system-name (env "PKG_SYSTEM" "rpc-protocol"))
        (version (let ((v (env "PKG_VERSION")))
                   (if (and v (plusp (length v)))
                       v
@@ -42,4 +78,5 @@
   (format t "~&Publishing ~a/~a:~a~%" namespace system-name version)
   (cl-repository-packager/publisher:publish-package
    reg namespace version result spec :skip-catalog t)
-  (format t "~&Published ~a/~a:~a~%" namespace system-name version))
+  (format t "~&Published ~a/~a:~a~%" namespace system-name version)
+  (uiop:quit 0))

@@ -1,9 +1,8 @@
 (defsystem "rpc-protocol"
-  :version "0.1.1"
-  :description "CLOS RPC protocol for cl-stack (JSON-RPC–shaped; transports + codecs)"
+  :version "0.2.0"
+  :description "CLOS RPC protocol for cl-stack (interaction modes + codec GFs; encoding-agnostic)"
   :author "egao1980"
   :license "MIT"
-  :depends-on ("yason")
   :serial t
   :pathname "src"
   :components ((:file "package")

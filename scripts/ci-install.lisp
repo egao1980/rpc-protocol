@@ -26,8 +26,9 @@
  (lambda ()
    (cl-repo:ensure-system-dependencies "rpc-protocol"
      :also-tests t
-     :sources '(("yason" :ql)
-                ("rove" :ql)))))
+     :default-source :oci
+     :with '("dissect")
+     :sources '(("dissect" :ql)))))
 
 (format t "~&; ci: install phase done~%")
 (uiop:quit 0)
