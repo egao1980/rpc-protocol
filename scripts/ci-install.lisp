@@ -1,4 +1,5 @@
 ;;;; Phase 1: install SUT dependency closure via cl-repository-client.
+;;;; No Quicklisp — OCI only (egao1980/cl-systems).
 
 (setf *debugger-hook*
       (lambda (c h)
@@ -10,10 +11,7 @@
 
 (defun call-with-ci-muffles (fn)
   #+sbcl
-  (handler-bind ((sb-ext:defconstant-uneql
-                  (lambda (c)
-                    (let ((r (find-restart 'continue c)))
-                      (when r (invoke-restart r))))))
+  (handler-bind ((sb-ext:defconstant-uneql #'continue))
     (funcall fn))
   #-sbcl
   (funcall fn))
