@@ -12,6 +12,7 @@
 
 (defsystem "rpc-protocol/tests"
   :depends-on ("rpc-protocol" "rove")
+  :properties (:cl-repo (:ci (:with ("dissect") :sources (("dissect" :ql)))))
   :pathname "tests"
   :serial t
   :components ((:file "package")
